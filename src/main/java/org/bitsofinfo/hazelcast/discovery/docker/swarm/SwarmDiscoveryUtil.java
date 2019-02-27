@@ -323,6 +323,7 @@ public class SwarmDiscoveryUtil {
 
 			// Collect all relevant containers for services with services-names on the relevant networks
 			for (String dockerServiceName : this.getDockerServiceNames()) {
+				logger.info("Invoking criteria-based container discovery for dockerServiceName=" + dockerServiceName);
 				discoveredContainers.addAll(
 						discoverContainersViaCriteria(docker,
 										   relevantNetIds2Networks,
@@ -393,11 +394,31 @@ public class SwarmDiscoveryUtil {
 
 		// find all relevant services given the criteria....
 		List<Service> services = docker.listServices(criteria);
-		
+
+		logger.info("Number of services matching given criteria = " + services.size());
+
+		if (services.size() == 0) {
+			List<Service> allServices = docker.listServices();
+
+			StringBuilder sb = new StringBuilder();
+			String delim = "";
+			for (Service s : allServices) {
+				sb.append(delim).append(s.spec().name());
+				delim = ",";
+			}
+
+			logger.info("No service match for given criteria");
+			logger.info("allServices=[" + sb.toString() + "]");
+		}
+
 		for (Service service : services) {
+
+			logger.info("Processing service with name=" + service.spec().name());
 
 			// crawl through all VIPs the service is on
 			for (EndpointVirtualIp vip : service.endpoint().virtualIps()) {
+
+				logger.info("Processing service endpoint with networkId=" + vip.networkId() + ", addr=" + vip.addr());
 
 				// does the service have a VIP on one of the networks we care about?
 				if (relevantNetIds2Networks.containsKey(vip.networkId())) {
@@ -454,6 +475,7 @@ public class SwarmDiscoveryUtil {
 			}
 		}
 
+		logger.info("Returning set of discovered containers with size=" + discoveredContainers.size());
 		return discoveredContainers;
 	}
 
